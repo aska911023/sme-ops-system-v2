@@ -65,6 +65,9 @@ export default function StoreBonus() {
   const [ptaiHours, setPtaiHours] = useState('')
   const [ptaiFull, setPtaiFull] = useState(true)
 
+  // 分頁
+  const [tab, setTab] = useState('monthly')
+
   // 新增人員(督導/代理/漏撈的人)
   const [allEmployees, setAllEmployees] = useState([])
   const [addEmpId, setAddEmpId] = useState('')
@@ -461,7 +464,28 @@ export default function StoreBonus() {
         )}
       </div>
 
-      {/* 季別累積結算（自選季別 + 可定義月份） */}
+      {/* 分頁切換 */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { k: 'monthly', label: '📋 門市月結' },
+          { k: 'quarter', label: '📊 季別結算' },
+          { k: 'competition', label: '🏆 店長競賽' },
+          { k: 'psi', label: '💰 個人銷售' },
+          { k: 'parttime', label: '⏱️ 計時激勵' },
+        ].map(t => (
+          <button key={t.k} onClick={() => setTab(t.k)}
+            style={{
+              padding: '8px 16px', fontSize: 13, borderRadius: 8, cursor: 'pointer',
+              fontWeight: tab === t.k ? 700 : 500,
+              background: tab === t.k ? 'var(--accent-cyan)' : 'var(--bg-card)',
+              color: tab === t.k ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${tab === t.k ? 'var(--accent-cyan)' : 'var(--border-medium)'}`,
+            }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* 季別結算 分頁 */}
+      {tab === 'quarter' && (
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
@@ -558,7 +582,10 @@ export default function StoreBonus() {
         )}
       </div>
 
-      {/* 🏆 店長競賽 */}
+      )}
+
+      {/* 店長競賽 分頁 */}
+      {tab === 'competition' && (
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0, fontSize: 16 }}>🏆 店長競賽（4個月一期・業績成長率排名）</h3>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -609,7 +636,10 @@ export default function StoreBonus() {
         )}
       </div>
 
-      {/* 💰 個人銷售酒款激勵 */}
+      )}
+
+      {/* 個人銷售 分頁 */}
+      {tab === 'psi' && (
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0, fontSize: 16 }}>💰 個人銷售酒款激勵（單筆滿4萬→1,500、滿10萬→3,000・次月20日獨立發放）</h3>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -660,7 +690,10 @@ export default function StoreBonus() {
         )}
       </div>
 
-      {/* ⏱️ 計時同仁全勤激勵 */}
+      )}
+
+      {/* 計時激勵 分頁 */}
+      {tab === 'parttime' && (
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
         <h3 style={{ marginTop: 0, fontSize: 16 }}>⏱️ 計時同仁全勤激勵（全勤達標→時薪+10・次月發放）</h3>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>全勤達標＝工時≥100h ＋ 無遲到/早退/事病假/曠職 ＋ 忘卡補卡≤4（由店長/HR認定勾選）；獎金＝當月核薪工時 × 10</div>
@@ -705,8 +738,10 @@ export default function StoreBonus() {
         )}
       </div>
 
-      {/* 門市層輸入 */}
-      {monthly && (
+      )}
+
+      {/* 門市月結 分頁(門市層輸入 + 員工表) */}
+      {tab === 'monthly' && monthly && (
         <div className="card" style={{ padding: 16, marginBottom: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             <Field label="營業額">
@@ -825,7 +860,7 @@ export default function StoreBonus() {
       )}
 
       {/* 員工表 */}
-      {monthly && employees.length > 0 && (
+      {tab === 'monthly' && monthly && employees.length > 0 && (
         <div className="card">
           <div className="data-table-wrapper">
             <table className="data-table">
