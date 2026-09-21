@@ -13,6 +13,7 @@ export default function PortalHome() {
   const [todayAttendance, setTodayAttendance] = useState(null)
   const [recentAttendance, setRecentAttendance] = useState([])  // 最近 7 天打卡紀錄
   const [store, setStore] = useState(null)
+  const [candidateStores, setCandidateStores] = useState([])   // 所屬 + additional_stores;GPS到手挑最近(對齊後端 clock-in)
   const [clockingIn, setClockingIn] = useState(false)
   const [clockMsg, setClockMsg] = useState(null)
   const [clockMode, setClockMode] = useState('normal')      // normal | outing (2026-05-28 簡化 5 → 2)
@@ -106,6 +107,19 @@ export default function PortalHome() {
 
   // 計算距離（GPS + store 都備齊時）+ 距離落在 151–1800m 自動重試一次
   // 1800m 是 Wi-Fi/基地台定位的常見上限；iPhone 第一筆常吃到 cached Wi-Fi 估算位置
+  // GPS 到手 → 從授權門市(所屬+additional_stores)挑最近的當打卡門市;跨店支援,對齊後端 clock-in
+  useEffect(() => {
+    if (!gpsLocation || candidateStores.length === 0) return
+    const withCoords = candidateStores.filter(s => s.lat != null && s.lng != null)
+    if (withCoords.length === 0) return
+    let best = null, bestD = Infinity
+    for (const s of withCoords) {
+      const d = haversineMetres(gpsLocation.lat, gpsLocation.lng, Number(s.lat), Number(s.lng))
+      if (d < bestD) { bestD = d; best = s }
+    }
+    if (best && best.id !== store?.id) setStore(best)
+  }, [gpsLocation, candidateStores])  // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!gpsLocation || !store?.lat || !store?.lng) return
     const d = Math.round(haversineMetres(gpsLocation.lat, gpsLocation.lng, store.lat, store.lng))
@@ -164,13 +178,22 @@ export default function PortalHome() {
       .order('date', { ascending: false })
       .then(({ data }) => setRecentAttendance(data || []))
 
-    // Load employee's store for clock-in validation
-    supabase.from('employees').select('store_id').eq('id', profile.id).maybeSingle()
-      .then(({ data }) => {
-        if (data?.store_id) {
-          supabase.from('stores').select('*').eq('id', data.store_id).maybeSingle()
-            .then(({ data: s }) => setStore(s))
+    // Load 員工授權門市(所屬 + additional_stores 跨店)→ GPS 到手挑最近的(對齊後端 clock-in edge 候選邏輯)
+    supabase.from('employees').select('store_id, additional_stores').eq('id', profile.id).maybeSingle()
+      .then(async ({ data }) => {
+        if (!data) return
+        const names = Array.isArray(data.additional_stores) ? data.additional_stores : []
+        const cands = []
+        if (data.store_id) {
+          const { data: s } = await supabase.from('stores').select('*').eq('id', data.store_id).maybeSingle()
+          if (s) cands.push(s)
         }
+        if (names.length) {
+          const { data: extra } = await supabase.from('stores').select('*').in('name', names)
+          for (const s of (extra || [])) if (!cands.some(c => c.id === s.id)) cands.push(s)
+        }
+        setCandidateStores(cands)
+        setStore(prev => prev || cands[0] || null)   // 先用所屬店當預設,GPS 到手後挑最近覆蓋
       })
   }, [profileReady, profile?.id, today])
 
